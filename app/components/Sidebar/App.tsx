@@ -1,5 +1,5 @@
 import { observer } from "mobx-react";
-import { SearchIcon, HomeIcon, SidebarIcon } from "outline-icons";
+import { SearchIcon, HomeIcon, SidebarIcon, TodoListIcon } from "outline-icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   DragActiveProvider,
@@ -40,6 +40,7 @@ import Starred from "./components/Starred";
 import ToggleButton from "./components/ToggleButton";
 import TrashLink from "./components/TrashLink";
 import useMobile from "~/hooks/useMobile";
+import env from "~/env";
 
 function AppSidebar() {
   const { t } = useTranslation();
@@ -136,6 +137,9 @@ function AppSidebar() {
               onClick={handleSearchClick}
               onClickIntent={Scenes.Search.preload}
             />
+            {env.GITHUB_CLIENT_ID && (
+              <SidebarLink to="/board" icon={<TodoListIcon />} label="Board" />
+            )}
             {can.createDocument && <DraftsLink />}
           </Section>
         </Overflow>

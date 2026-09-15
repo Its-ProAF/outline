@@ -30,6 +30,7 @@ import {
 import env from "~/env";
 
 const SettingsRoutes = lazy(() => import("./settings"));
+const Board = lazy(() => import("../../plugins/board/client/Board"));
 const Debug = lazy(() => import("~/scenes/Developer/Debug"));
 const Changesets = lazy(() => import("~/scenes/Developer/Changesets"));
 
@@ -141,6 +142,7 @@ function AuthenticatedRoutes() {
                 path={`${searchPath()}/:query?`}
                 component={Scenes.Search.Component}
               />
+              <Route exact path="/board" component={Board} />
               {env.isDevelopment && (
                 <Route exact path={debugPath()} component={Debug} />
               )}
