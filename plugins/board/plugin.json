@@ -1,0 +1,6 @@
+{
+  "id": "board",
+  "name": "Board",
+  "priority": 30,
+  "description": "Board of the GitHub issues of Its-ProAF/ProAF, read live and edited on behalf of each person."
+}
