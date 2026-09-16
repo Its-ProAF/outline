@@ -9,6 +9,7 @@ import { Column, DataType, ForeignKey, Table } from "sequelize-typescript";
 import env from "@server/env";
 import {
   PasswordFields,
+  type PasswordCategoryValue,
   type PasswordValues,
 } from "plugins/passwords/shared/schema";
 import IdModel from "./base/IdModel";
@@ -30,8 +31,12 @@ export class Password extends IdModel<
   @Column(DataType.INTEGER)
   version: number;
 
+  @Column({ type: DataType.STRING, defaultValue: "password" })
+  category: PasswordCategoryValue;
+
   /** Encrypts all credential fields and authenticates the workspace and record identity. */
   seal(values: PasswordValues) {
+    this.category = values.category ?? this.category ?? "password";
     const nonce = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", this.key(), nonce);
     cipher.setAAD(Buffer.from(`${this.teamId}:${this.id}`));

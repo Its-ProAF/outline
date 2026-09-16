@@ -1,4 +1,4 @@
-import { PadlockIcon } from "outline-icons";
+import { CopyIcon, EyeIcon, PadlockIcon } from "outline-icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import styled from "styled-components";
@@ -8,7 +8,12 @@ import Heading from "~/components/Heading";
 import Modal from "~/components/Modal";
 import Scene from "~/components/Scene";
 import { client } from "~/utils/ApiClient";
-import type { PasswordEntry, PasswordValues } from "../shared/schema";
+import { PasswordCategory } from "../shared/schema";
+import type {
+  PasswordCategoryValue,
+  PasswordEntry,
+  PasswordValues,
+} from "../shared/schema";
 
 interface Page {
   entries: PasswordEntry[];
@@ -16,15 +21,28 @@ interface Page {
   canWrite: boolean;
 }
 const pageSize = 50;
+const categories: Record<PasswordCategoryValue, string> = {
+  password: "Password",
+  key: "Chiavi",
+  environment: "Variabili ambiente",
+  file: "File e certificati",
+};
+
+/** Uses the saved site name, falling back to its hostname for older entries. */
+function siteName(entry: PasswordEntry) {
+  return entry.name || new URL(entry.site).hostname.replace(/^www\./, "");
+}
 
 /** Workspace credential table with explicit secret disclosure and editing. */
 export function Passwords() {
   const [page, setPage] = useState<Page>();
   const [offset, setOffset] = useState(0);
+  const [category, setCategory] = useState<PasswordCategoryValue>("password");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<PasswordEntry | "new">();
   const [deleting, setDeleting] = useState<PasswordEntry>();
+  const [notes, setNotes] = useState<PasswordEntry>();
   const [busy, setBusy] = useState(false);
   const request = useRef(0);
   const load = useCallback(async () => {
@@ -35,6 +53,7 @@ export function Passwords() {
       const result = await client.post<{ data: Page }>("/passwords.list", {
         offset,
         limit: pageSize,
+        category,
       });
       if (current === request.current) {
         setPage(result.data);
@@ -48,7 +67,7 @@ export function Passwords() {
         setLoading(false);
       }
     }
-  }, [offset]);
+  }, [offset, category]);
   useEffect(() => {
     void load();
     return () => {
@@ -90,26 +109,48 @@ export function Passwords() {
             Aggiorna
           </Button>
           {page?.canWrite && (
-            <Button onClick={() => setEditing("new")}>Nuova password</Button>
+            <Button onClick={() => setEditing("new")}>Nuova voce</Button>
           )}
         </Actions>
       </Toolbar>
-      <p>
-        Sito, username, password e note. Condivisi con i membri del workspace.
-      </p>
+      <CategoryBar aria-label="Tipo di credenziale">
+        {PasswordCategory.options.map((value) => (
+          <Button
+            key={value}
+            neutral={category !== value}
+            aria-pressed={category === value}
+            onClick={() => {
+              if (category === value) {
+                return;
+              }
+              request.current += 1;
+              setPage(undefined);
+              setLoading(true);
+              setOffset(0);
+              setCategory(value);
+            }}
+          >
+            {categories[value]}
+          </Button>
+        ))}
+      </CategoryBar>
       {error && <p role="alert">{error}</p>}
       {loading && <p role="status">Caricamento…</p>}
       {!loading && page?.total === 0 && (
-        <Empty>Nessuna password salvata. Aggiungi il primo accesso.</Empty>
+        <Empty>Nessuna voce in questa sezione.</Empty>
       )}
       {page && page.entries.length > 0 && (
         <TableScroll aria-busy={loading}>
           <Table>
             <thead>
               <tr>
-                <th scope="col">Sito</th>
-                <th scope="col">Username</th>
-                <th scope="col">Password</th>
+                <th scope="col">{category === "password" ? "Sito" : "Nome"}</th>
+                <th scope="col">
+                  {category === "password" ? "Username" : "Identificativo"}
+                </th>
+                <th scope="col">
+                  {category === "password" ? "Password" : "Valore"}
+                </th>
                 <th scope="col">Note</th>
                 <th scope="col">Azioni</th>
               </tr>
@@ -118,21 +159,36 @@ export function Passwords() {
               {page.entries.map((entry) => (
                 <tr key={`${entry.id}:${entry.version}`}>
                   <td>
-                    <a
+                    <SiteLink
                       href={entry.site}
+                      title={entry.site}
                       target="_blank"
                       rel="noopener noreferrer"
                       referrerPolicy="no-referrer"
                     >
-                      {entry.site}
-                    </a>
+                      {siteName(entry)}
+                    </SiteLink>
                   </td>
-                  <td>{entry.username || "—"}</td>
+                  <td>
+                    <CellText title={entry.username}>
+                      {entry.username || "—"}
+                    </CellText>
+                  </td>
                   <td>
                     <Secret entry={entry} />
                   </td>
                   <td>
-                    <Notes>{entry.notes || "—"}</Notes>
+                    {entry.notes ? (
+                      <Button
+                        neutral
+                        aria-label={`Mostra note per ${siteName(entry)}`}
+                        onClick={() => setNotes(entry)}
+                      >
+                        Note
+                      </Button>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td>
                     {page.canWrite && (
@@ -183,14 +239,22 @@ export function Passwords() {
         </Toolbar>
       )}
       <Modal
+        isOpen={!!notes}
+        title={`Note · ${notes ? siteName(notes) : ""}`}
+        onRequestClose={() => setNotes(undefined)}
+      >
+        <Notes>{notes?.notes}</Notes>
+      </Modal>
+      <Modal
         isOpen={!!editing}
-        title={editing === "new" ? "Nuova password" : "Modifica password"}
+        title={editing === "new" ? "Nuova voce" : "Modifica voce"}
         onRequestClose={() => setEditing(undefined)}
       >
         {editing && (
           <Editor
             key={editing === "new" ? "new" : editing.id}
             entry={editing}
+            category={category}
             onClose={() => setEditing(undefined)}
             onSaved={() => {
               setEditing(undefined);
@@ -286,10 +350,15 @@ function Secret({ entry }: SecretProps) {
   };
   return (
     <SecretCell>
-      <code>{secret ?? "••••••••"}</code>
+      <code tabIndex={secret === undefined ? undefined : 0}>
+        {secret ?? "••••••••"}
+      </code>
       <Actions>
         <Button
           neutral
+          icon={<EyeIcon />}
+          title={secret === undefined ? "Mostra password" : "Nascondi password"}
+          aria-pressed={secret !== undefined}
           disabled={busy}
           aria-label={`${secret === undefined ? "Mostra" : "Nascondi"} password per ${entry.site}`}
           onClick={() => {
@@ -299,31 +368,32 @@ function Secret({ entry }: SecretProps) {
               setSecret(undefined);
             }
           }}
-        >
-          {secret === undefined ? "Mostra" : "Nascondi"}
-        </Button>
+        />
         <Button
           neutral
+          icon={<CopyIcon />}
+          title="Copia password"
           disabled={busy}
           aria-label={`Copia password per ${entry.site}`}
           onClick={() => handleRead(true)}
-        >
-          Copia
-        </Button>
+        />
       </Actions>
-      <span role="status">{message}</span>
+      <SecretStatus role="status">{message}</SecretStatus>
     </SecretCell>
   );
 }
 
 interface EditorProps {
   entry: PasswordEntry | "new";
+  category: PasswordCategoryValue;
   onClose: () => void;
   onSaved: () => void;
 }
 /** Edits metadata without fetching the existing secret; blank preserves it on update. */
-function Editor({ entry, onClose, onSaved }: EditorProps) {
+function Editor({ entry, category, onClose, onSaved }: EditorProps) {
   const [values, setValues] = useState({
+    category: entry === "new" ? category : (entry.category ?? "password"),
+    name: entry === "new" ? "" : entry.name || "",
     site: entry === "new" ? "" : entry.site,
     username: entry === "new" ? "" : entry.username,
     password: "",
@@ -359,9 +429,38 @@ function Editor({ entry, onClose, onSaved }: EditorProps) {
   return (
     <Form onSubmit={handleSubmit}>
       <label>
-        Sito
+        Tipo
+        <Select
+          value={values.category}
+          onChange={(e) =>
+            setValues({
+              ...values,
+              category: PasswordCategory.parse(e.target.value),
+            })
+          }
+        >
+          {PasswordCategory.options.map((value) => (
+            <option key={value} value={value}>
+              {categories[value]}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <label>
+        {values.category === "password" ? "Nome del sito" : "Nome"}
         <Input
           autoFocus
+          maxLength={200}
+          placeholder="Ad esempio Gmail"
+          value={values.name}
+          onChange={(e) => setValues({ ...values, name: e.target.value })}
+        />
+      </label>
+      <label>
+        {values.category === "password"
+          ? "Link del sito"
+          : "Link del servizio o del file"}
+        <Input
           type="url"
           required
           maxLength={2048}
@@ -371,7 +470,7 @@ function Editor({ entry, onClose, onSaved }: EditorProps) {
         />
       </label>
       <label>
-        Username
+        {values.category === "password" ? "Username" : "Identificativo"}
         <Input
           autoComplete="off"
           maxLength={1024}
@@ -380,7 +479,7 @@ function Editor({ entry, onClose, onSaved }: EditorProps) {
         />
       </label>
       <label>
-        Password
+        {values.category === "password" ? "Password" : "Valore segreto"}
         <Input
           type="password"
           autoComplete="new-password"
@@ -425,8 +524,16 @@ const Toolbar = styled.div`
 `;
 const Actions = styled.div`
   display: flex;
+  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+`;
+const CategoryBar = styled.nav`
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 0 16px;
+  white-space: nowrap;
 `;
 const Empty = styled.p`
   padding: 48px 16px;
@@ -442,32 +549,58 @@ const Table = styled.table`
   text-align: left;
   th,
   td {
-    padding: 14px 12px;
+    padding: 8px 12px;
     border-bottom: 1px solid ${s("divider")};
-    vertical-align: top;
+    vertical-align: middle;
+    white-space: nowrap;
   }
   th {
     color: ${s("textSecondary")};
     font-weight: 500;
   }
   td {
-    min-width: 140px;
     max-width: 340px;
-    overflow-wrap: anywhere;
   }
+`;
+const CellText = styled.span`
+  display: block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+const SiteLink = styled.a`
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 const Notes = styled.div`
   white-space: pre-wrap;
-  max-height: 140px;
+  overflow-wrap: anywhere;
+  max-height: 60vh;
   overflow-y: auto;
 `;
 const SecretCell = styled.div`
-  display: grid;
+  display: flex;
+  align-items: center;
+  position: relative;
   gap: 8px;
   code {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    display: block;
+    width: 100px;
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+`;
+const SecretStatus = styled.span`
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  background: ${s("background")};
+  font-size: 12px;
 `;
 const Form = styled.form`
   display: grid;
@@ -495,4 +628,12 @@ const Textarea = styled.textarea`
   color: ${s("text")};
   font: inherit;
   resize: vertical;
+`;
+const Select = styled.select`
+  padding: 8px 10px;
+  border: 1px solid ${s("inputBorder")};
+  border-radius: 6px;
+  background: ${s("inputBackground")};
+  color: ${s("text")};
+  font: inherit;
 `;

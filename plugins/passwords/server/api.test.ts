@@ -16,6 +16,59 @@ const values = {
 };
 
 describe("password manager", () => {
+  it("filters categories before pagination and preserves the category on partial edits", async () => {
+    const user = await buildUser();
+    const legacy = await server.post("/api/passwords.create", user, {
+      body: values,
+    });
+    expect((await legacy.json()).data.category).toBe("password");
+    const created = await server.post("/api/passwords.create", user, {
+      body: { ...values, category: "environment", name: "Recovery key" },
+    });
+    const { data: entry } = await created.json();
+    const updated = await server.post("/api/passwords.update", user, {
+      body: { id: entry.id, version: 1, notes: "Updated note" },
+    });
+    expect((await updated.json()).data.category).toBe("environment");
+    const listing = await server.post("/api/passwords.list", user, {
+      body: { category: "password", limit: 1 },
+    });
+    const page = await listing.json();
+    expect(page.data.total).toBe(1);
+    expect(page.data.entries[0].category).toBe("password");
+    const moved = await server.post("/api/passwords.update", user, {
+      body: { id: entry.id, version: 2, category: "key" },
+    });
+    expect((await moved.json()).data.category).toBe("key");
+    const empty = await server.post("/api/passwords.list", user, {
+      body: { category: "environment" },
+    });
+    expect((await empty.json()).data.total).toBe(0);
+  });
+
+  it("adds a site name to older entries and preserves it during partial updates", async () => {
+    const user = await buildUser();
+    const created = await server.post("/api/passwords.create", user, {
+      body: values,
+    });
+    const { data: entry } = await created.json();
+    const named = await server.post("/api/passwords.update", user, {
+      body: { id: entry.id, version: 1, name: "Example" },
+    });
+    expect(named.status).toBe(200);
+    expect((await named.json()).data.name).toBe("Example");
+    const updated = await server.post("/api/passwords.update", user, {
+      body: { id: entry.id, version: 2, username: "bob" },
+    });
+    expect(updated.status).toBe(200);
+    const stored = await Password.findByPk(entry.id, { rejectOnEmpty: true });
+    expect(stored.open()).toEqual({
+      ...values,
+      name: "Example",
+      username: "bob",
+    });
+  });
+
   it("creates encrypted entries, lists without secrets, reads, updates and deletes", async () => {
     const user = await buildUser();
     const created = await server.post("/api/passwords.create", user, {
