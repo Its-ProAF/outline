@@ -18,6 +18,7 @@ function present(password: Password) {
   return {
     id: password.id,
     ...fields,
+    category: password.category,
     version: password.version,
     createdAt: password.createdAt.toISOString(),
     updatedAt: password.updatedAt.toISOString(),
@@ -29,13 +30,14 @@ export class PasswordService {
   /** Lists a bounded page without returning passwords. */
   static async list(user: User, input: z.infer<typeof PasswordListInput>) {
     authorize(user, "listPasswords", user.team);
+    const { category, ...pagination } = input;
     const { rows, count } = await Password.findAndCountAll({
-      where: { teamId: user.teamId },
+      where: { teamId: user.teamId, ...(category ? { category } : {}) },
       order: [
         ["createdAt", "DESC"],
         ["id", "ASC"],
       ],
-      ...input,
+      ...pagination,
     });
     return {
       entries: rows.map(present),

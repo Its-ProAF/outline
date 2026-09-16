@@ -75,13 +75,17 @@ The `passwords` plugin adds `/passwords` and a Password sidebar item. Members ca
 
 | API endpoint (POST) | MCP tool | Input |
 | --- | --- | --- |
-| `/api/passwords.list` | `list_passwords` | `offset`, `limit` (maximum 100); returns metadata, total and write permission, without secrets |
+| `/api/passwords.list` | `list_passwords` | `offset`, `limit` (maximum 100), optional `category`; returns metadata, filtered total and write permission, without secrets |
 | `/api/passwords.info` | `get_password` | `id`; explicitly returns the secret |
-| `/api/passwords.create` | `create_password` | `site` (HTTP/S URL), `username`, `password`, optional `notes` |
+| `/api/passwords.create` | `create_password` | `site` (HTTP/S URL), `username`, `password`, optional `name` (display name, up to 200 characters), `category` and `notes` |
 | `/api/passwords.update` | `update_password` | `id`, current `version`, and only the fields to change |
 | `/api/passwords.delete` | `delete_password` | `id`, current `version`; permanent deletion |
 
 API responses use Outline's `{ data: ... }` envelope. List returns `{ entries, total, canWrite }`. Create, list and update never return the password. Update and delete lock the row and reject stale versions with HTTP 409. In the UI, leaving the password input blank during editing preserves the existing password; an empty password sent directly to the API is rejected.
+
+The table keeps every credential on one line. Site names link to the saved URL, with a hostname fallback for unnamed entries. Notes open in a separate dialog on request and remain available to agents through the API. The optional name is stored inside the encrypted payload; older entries require no migration, and partial updates preserve an existing name.
+
+Categories are `password` (default), `key`, `environment`, and `file`. The UI shows a separate section for each; API and MCP clients can omit the filter to list all categories. Migration `20260916174801-add-password-category` adds an indexed, non-secret category column so filtering and pagination run in the database without decrypting unrelated entries. Existing records default to `password`; recategorizing an entry preserves its secret. File entries hold a secret and a link to the original file, not uploaded binary data.
 
 Existing Outline API-key and OAuth scopes apply. `passwords:read` allows listing and reading secrets; `passwords:write` allows all password operations. Exact route scopes can restrict access further, such as `/api/passwords.list` for metadata only. Document-only tokens cannot use the password tools. Reconnect or refresh the MCP tool inventory after deployment to discover the five new tools. Agents should fetch an individual secret only when required by the user's task and never copy it into document content or logs.
 
