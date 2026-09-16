@@ -23,6 +23,7 @@ import { commentTools } from "@server/tools/comments";
 import { documentTools } from "@server/tools/documents";
 import { fetchTool } from "@server/tools/fetch";
 import { templateTools } from "@server/tools/templates";
+import { passwordTools } from "@server/tools/passwords";
 import { userTools } from "@server/tools/users";
 import { iconNamesResourceUri } from "@server/tools/util";
 import { version } from "../../../package.json";
@@ -127,6 +128,7 @@ function createMcpServer(scopes: string[], guidance?: string): McpServer {
   fetchTool(server, scopes);
   templateTools(server, scopes);
   userTools(server, scopes);
+  passwordTools(server, scopes);
 
   return server;
 }
