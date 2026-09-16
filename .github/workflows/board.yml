@@ -35,6 +35,14 @@ jobs:
       - uses: ./.github/actions/install
       - run: yarn tsc
 
+  passkey-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/install
+      - run: yarn playwright install --with-deps chromium
+      - run: node --test plugins/passwords/agent/browser.test.mjs
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -71,7 +79,7 @@ jobs:
       - run: yarn test:server --maxWorkers=2 --shard=${{ matrix.shard }}/4
 
   image:
-    needs: [lint, types, test, test-server]
+    needs: [lint, types, test, test-server, passkey-browser]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:

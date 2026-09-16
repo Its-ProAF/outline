@@ -31,6 +31,15 @@ if (env.SENTRY_DSN) {
     ],
     beforeSend(event) {
       try {
+        // Vault and MCP request bodies can contain passwords, OTP seeds or private keys.
+        if (
+          event.request?.url &&
+          /\/(?:api\/passwords\.|mcp(?:\/|$|\?))/.test(event.request.url)
+        ) {
+          delete event.request.data;
+          delete event.request.cookies;
+        }
+
         switch (event.level) {
           case "warning":
             // Sample warnings to reduce noise
