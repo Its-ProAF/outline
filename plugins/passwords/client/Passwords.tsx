@@ -250,7 +250,7 @@ export function Passwords() {
         title={editing === "new" ? "Nuova voce" : "Modifica voce"}
         onRequestClose={() => setEditing(undefined)}
       >
-        {editing && (
+        {editing ? (
           <Editor
             key={editing === "new" ? "new" : editing.id}
             entry={editing}
@@ -261,7 +261,7 @@ export function Passwords() {
               void load();
             }}
           />
-        )}
+        ) : null}
       </Modal>
       <Modal
         isOpen={!!deleting}
