@@ -1,3 +1,4 @@
+import { PadlockIcon } from "outline-icons";
 import { observer } from "mobx-react";
 import { SearchIcon, HomeIcon, SidebarIcon, TodoListIcon } from "outline-icons";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -139,6 +140,13 @@ function AppSidebar() {
             />
             {env.GITHUB_CLIENT_ID && (
               <SidebarLink to="/board" icon={<TodoListIcon />} label="Board" />
+            )}
+            {!user.isGuest && (
+              <SidebarLink
+                to="/passwords"
+                icon={<PadlockIcon />}
+                label="Password"
+              />
             )}
             {can.createDocument && <DraftsLink />}
           </Section>

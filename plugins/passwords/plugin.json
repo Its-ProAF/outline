@@ -1,0 +1,6 @@
+{
+  "id": "passwords",
+  "name": "Password",
+  "priority": 31,
+  "description": "Workspace password manager with API and MCP access."
+}
