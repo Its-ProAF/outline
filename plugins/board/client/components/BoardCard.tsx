@@ -100,12 +100,13 @@ export default function BoardCard({
         </Person>
         {done && issue.closedAt ? (
           <Muted>chiusa {shortDate(issue.closedAt)}</Muted>
+        ) : deadline ? (
+          <Deadline $tone={deadline.tone} title="Scadenza">
+            {deadline.label}
+          </Deadline>
         ) : (
-          deadline && (
-            <Deadline $tone={deadline.tone} title="Scadenza">
-              {deadline.label}
-            </Deadline>
-          )
+          // Without a deadline the year is the only date the card can show.
+          issue.year && <Muted title="Anno">{issue.year}</Muted>
         )}
         <Right>
           <Number>#{issue.number}</Number>

@@ -20,6 +20,7 @@ export type BoardIssue = {
   labels: string[];
   area: string | null;
   type: string | null;
+  year: string | null;
   assignees: BoardPerson[];
   milestone: string | null;
   deadline: string | null;
