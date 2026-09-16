@@ -12,16 +12,20 @@ export type BoardFilter = {
   type: string;
   milestone: string;
   area: string;
+  year: string;
   query: string;
 };
 
 export type FacetKey = Exclude<keyof BoardFilter, "query">;
+
+export const CurrentYear = String(new Date().getFullYear());
 
 export const DefaultFilter: BoardFilter = {
   assignee: "",
   type: "attività",
   milestone: "",
   area: "",
+  year: CurrentYear,
   query: "",
 };
 
@@ -75,6 +79,10 @@ export function matches(issue: BoardIssue, filter: BoardFilter) {
     return false;
   }
   if (filter.area && issue.area !== filter.area) {
+    return false;
+  }
+  // An issue without a year belongs to no year in particular: never hide it.
+  if (filter.year && issue.year && issue.year !== filter.year) {
     return false;
   }
   if (

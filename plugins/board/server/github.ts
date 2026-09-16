@@ -328,7 +328,7 @@ export class BoardGitHub {
 }
 
 function buildIssue(
-  raw: Omit<BoardIssue, "column" | "area" | "type" | "deadline"> & {
+  raw: Omit<BoardIssue, "column" | "area" | "type" | "year" | "deadline"> & {
     body: string | null;
   }
 ): BoardIssue {
@@ -338,6 +338,7 @@ function buildIssue(
     column: columnFor(issue),
     area: labelValue(issue.labels, "area:"),
     type: labelValue(issue.labels, "tipo:"),
+    year: labelValue(issue.labels, "anno:"),
     deadline: parseDeadline(body),
   };
 }

@@ -161,7 +161,9 @@ describe("#board.list", () => {
     await linkGitHub(user);
     mockBoard(
       [
-        graphqlIssue(1, { labels: ["area:fisco", "tipo:attività"] }),
+        graphqlIssue(1, {
+          labels: ["area:fisco", "tipo:attività", "anno:2027"],
+        }),
         graphqlIssue(2, { labels: ["stato:in-attesa"] }),
       ],
       [
@@ -196,6 +198,8 @@ describe("#board.list", () => {
     });
     expect(body.data.issues[0].area).toEqual("fisco");
     expect(body.data.issues[0].type).toEqual("attività");
+    expect(body.data.issues[0].year).toEqual("2027");
+    expect(body.data.issues[1].year).toBeNull();
   });
 
   it("reads GitHub at most once every 60 seconds", async () => {

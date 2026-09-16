@@ -1,7 +1,14 @@
 import styled from "styled-components";
 import type { BoardData } from "../../shared/types";
 import type { BoardFilter, FacetKey } from "../filters";
-import { AreaOrder, countFor, firstName, NoValue, TypeNames } from "../filters";
+import {
+  AreaOrder,
+  countFor,
+  CurrentYear,
+  firstName,
+  NoValue,
+  TypeNames,
+} from "../filters";
 
 type Props = {
   board: BoardData;
@@ -23,6 +30,13 @@ export default function Facets({ board, filter, onChange }: Props) {
       board.issues.map((i) => i.milestone).filter((m): m is string => !!m)
     ),
   ].sort((a, b) => a.localeCompare(b));
+  const years = [
+    ...new Set(
+      [CurrentYear, ...board.issues.map((i) => i.year)].filter(
+        (y): y is string => !!y
+      )
+    ),
+  ].sort();
   const areas = [
     ...new Set(board.issues.map((i) => i.area).filter(Boolean)),
   ].sort(
@@ -55,6 +69,11 @@ export default function Facets({ board, filter, onChange }: Props) {
         ...milestones.map((m): [string, string] => [m, m]),
         [NoValue, "Senza macro task"],
       ],
+    },
+    {
+      key: "year",
+      legend: "Anno",
+      options: [...years.map((y): [string, string] => [y, y]), ["", "Tutti"]],
     },
     {
       key: "area",
