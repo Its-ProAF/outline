@@ -8,9 +8,9 @@ import type { InferAttributes, InferCreationAttributes } from "sequelize";
 import { Column, DataType, ForeignKey, Table } from "sequelize-typescript";
 import env from "@server/env";
 import {
-  PasswordFields,
+  StoredPasswordFields,
   type PasswordCategoryValue,
-  type PasswordValues,
+  type StoredPasswordValues,
 } from "plugins/passwords/shared/schema";
 import IdModel from "./base/IdModel";
 import Team from "./Team";
@@ -35,7 +35,7 @@ export class Password extends IdModel<
   category: PasswordCategoryValue;
 
   /** Encrypts all credential fields and authenticates the workspace and record identity. */
-  seal(values: PasswordValues) {
+  seal(values: StoredPasswordValues) {
     this.category = values.category ?? this.category ?? "password";
     const nonce = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", this.key(), nonce);
@@ -48,7 +48,7 @@ export class Password extends IdModel<
   }
 
   /** Decrypts credential fields, rejecting corrupt or substituted ciphertext. */
-  open(): PasswordValues {
+  open(): StoredPasswordValues {
     const decipher = createDecipheriv(
       "aes-256-gcm",
       this.key(),
@@ -60,7 +60,7 @@ export class Password extends IdModel<
       decipher.update(this.sealed.subarray(28)),
       decipher.final(),
     ]);
-    return PasswordFields.parse(JSON.parse(plaintext.toString("utf8")));
+    return StoredPasswordFields.parse(JSON.parse(plaintext.toString("utf8")));
   }
 
   private key() {

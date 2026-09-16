@@ -203,7 +203,7 @@ describe("password manager", () => {
     expect(
       (
         await server.post("/api/passwords.create", user, {
-          body: { ...values, password: "" },
+          body: { ...values, password: "x".repeat(16385) },
         })
       ).status
     ).toBe(400);

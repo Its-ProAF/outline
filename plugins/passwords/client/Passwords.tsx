@@ -8,6 +8,7 @@ import Heading from "~/components/Heading";
 import Modal from "~/components/Modal";
 import Scene from "~/components/Scene";
 import { client } from "~/utils/ApiClient";
+import { LoginSecurity } from "./LoginSecurity";
 import { PasswordCategory } from "../shared/schema";
 import type {
   PasswordCategoryValue,
@@ -43,6 +44,7 @@ export function Passwords() {
   const [editing, setEditing] = useState<PasswordEntry | "new">();
   const [deleting, setDeleting] = useState<PasswordEntry>();
   const [notes, setNotes] = useState<PasswordEntry>();
+  const [security, setSecurity] = useState<PasswordEntry>();
   const [busy, setBusy] = useState(false);
   const request = useRef(0);
   const load = useCallback(async () => {
@@ -175,7 +177,11 @@ export function Passwords() {
                     </CellText>
                   </td>
                   <td>
-                    <Secret entry={entry} />
+                    {entry.hasPassword === false ? (
+                      "Non impostata"
+                    ) : (
+                      <Secret entry={entry} />
+                    )}
                   </td>
                   <td>
                     {entry.notes ? (
@@ -191,22 +197,37 @@ export function Passwords() {
                     )}
                   </td>
                   <td>
-                    {page.canWrite && (
-                      <Actions>
-                        <Button neutral onClick={() => setEditing(entry)}>
-                          Modifica
-                        </Button>
+                    <Actions>
+                      {category === "password" && (
                         <Button
                           neutral
-                          onClick={() => {
-                            setError("");
-                            setDeleting(entry);
-                          }}
+                          onClick={() => setSecurity(entry)}
+                          aria-label={`2FA e passkey per ${siteName(entry)}`}
                         >
-                          Elimina
+                          {entry.hasPasskey
+                            ? "Passkey"
+                            : entry.hasTotp
+                              ? "2FA attiva"
+                              : "2FA / Passkey"}
                         </Button>
-                      </Actions>
-                    )}
+                      )}
+                      {page.canWrite && (
+                        <>
+                          <Button neutral onClick={() => setEditing(entry)}>
+                            Modifica
+                          </Button>
+                          <Button
+                            neutral
+                            onClick={() => {
+                              setError("");
+                              setDeleting(entry);
+                            }}
+                          >
+                            Elimina
+                          </Button>
+                        </>
+                      )}
+                    </Actions>
                   </td>
                 </tr>
               ))}
@@ -238,6 +259,21 @@ export function Passwords() {
           </Actions>
         </Toolbar>
       )}
+      <Modal
+        isOpen={!!security}
+        title="Sicurezza del login"
+        onRequestClose={() => setSecurity(undefined)}
+      >
+        {security ? (
+          <LoginSecurity
+            entry={security}
+            canWrite={!!page?.canWrite}
+            onChanged={() => {
+              void load();
+            }}
+          />
+        ) : null}
+      </Modal>
       <Modal
         isOpen={!!notes}
         title={`Note · ${notes ? siteName(notes) : ""}`}
@@ -394,6 +430,7 @@ function Editor({ entry, category, onClose, onSaved }: EditorProps) {
   const [values, setValues] = useState({
     category: entry === "new" ? category : (entry.category ?? "password"),
     name: entry === "new" ? "" : entry.name || "",
+    loginUrl: entry === "new" ? "" : entry.loginUrl || "",
     site: entry === "new" ? "" : entry.site,
     username: entry === "new" ? "" : entry.username,
     password: "",
@@ -407,13 +444,17 @@ function Editor({ entry, category, onClose, onSaved }: EditorProps) {
     setError("");
     try {
       if (entry === "new") {
-        await client.post("/passwords.create", values);
+        await client.post("/passwords.create", {
+          ...values,
+          loginUrl: values.loginUrl || null,
+        });
       } else {
         const { password, ...metadata } = values;
         await client.post("/passwords.update", {
           id: entry.id,
           version: entry.version,
           ...metadata,
+          loginUrl: values.loginUrl || null,
           ...(password ? { password } : {}),
         });
       }
@@ -470,6 +511,16 @@ function Editor({ entry, category, onClose, onSaved }: EditorProps) {
         />
       </label>
       <label>
+        Link di login (se diverso dal sito)
+        <Input
+          type="url"
+          maxLength={2048}
+          placeholder="https://accounts.google.com"
+          value={values.loginUrl}
+          onChange={(e) => setValues({ ...values, loginUrl: e.target.value })}
+        />
+      </label>
+      <label>
         {values.category === "password" ? "Username" : "Identificativo"}
         <Input
           autoComplete="off"
@@ -483,15 +534,16 @@ function Editor({ entry, category, onClose, onSaved }: EditorProps) {
         <Input
           type="password"
           autoComplete="new-password"
-          required={entry === "new"}
           maxLength={16384}
           value={values.password}
           onChange={(e) => setValues({ ...values, password: e.target.value })}
         />
       </label>
-      {entry !== "new" && (
-        <small>Lascia vuoto per mantenere la password attuale.</small>
-      )}
+      <small>
+        {entry === "new"
+          ? "Facoltativa per gli account che usano solo una passkey."
+          : "Lascia vuoto per mantenere la password attuale."}
+      </small>
       <label>
         Note
         <Textarea

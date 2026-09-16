@@ -6,6 +6,7 @@ import { NotFoundError } from "@server/errors";
 import { sequelize } from "@server/storage/database";
 import {
   PasswordFields,
+  StoredPasswordFields,
   type PasswordListInput,
   type PasswordUpdateInput,
   type PasswordValues,
@@ -14,11 +15,21 @@ import {
 
 /** Formats a credential without exposing its secret or ciphertext. */
 function present(password: Password) {
-  const { password: _secret, ...fields } = password.open();
+  const {
+    password: _secret,
+    totp,
+    passkey,
+    passkeyLease: _lease,
+    ...fields
+  } = password.open();
   return {
     id: password.id,
     ...fields,
     category: password.category,
+    hasTotp: !!totp,
+    hasPassword: !!_secret,
+    hasPasskey: !!passkey,
+    passkeyRpId: passkey?.rpId,
     version: password.version,
     createdAt: password.createdAt.toISOString(),
     updatedAt: password.updatedAt.toISOString(),
@@ -83,7 +94,7 @@ export class PasswordService {
         throw httpErrors(409, "Voce modificata. Ricarica prima di salvare.");
       }
       const { id: _id, version: _version, ...changes } = input;
-      entry.seal(PasswordFields.parse({ ...entry.open(), ...changes }));
+      entry.seal(StoredPasswordFields.parse({ ...entry.open(), ...changes }));
       entry.version += 1;
       await entry.save({ transaction });
       return present(entry);

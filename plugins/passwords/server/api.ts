@@ -12,8 +12,14 @@ import {
   PasswordRef,
   PasswordUpdateInput,
   PasswordVersionRef,
+  FactorReadInput,
+  PasskeyReleaseInput,
+  TotpSaveInput,
+  PasskeySaveInput,
+  FindLoginInput,
 } from "../shared/schema";
 import { PasswordService } from "./service";
+import { LoginFactors } from "./factors";
 
 const router = new Router();
 
@@ -56,6 +62,26 @@ endpoint("update", PasswordUpdateInput, (ctx) =>
 );
 endpoint("delete", PasswordVersionRef, (ctx) =>
   PasswordService.delete(ctx.state.auth.user, ctx.input.body)
+);
+
+endpoint("findLogin", FindLoginInput, (ctx) =>
+  LoginFactors.find(ctx.state.auth.user, ctx.input.body)
+);
+endpoint("setTotp", TotpSaveInput, (ctx) =>
+  LoginFactors.setTotp(ctx.state.auth.user, ctx.input.body)
+);
+endpoint("totp", FactorReadInput, (ctx) =>
+  LoginFactors.totp(ctx.state.auth.user, ctx.input.body)
+);
+endpoint("setPasskey", PasskeySaveInput, (ctx) =>
+  LoginFactors.setPasskey(ctx.state.auth.user, ctx.input.body)
+);
+endpoint("passkey", FactorReadInput, (ctx) =>
+  LoginFactors.passkey(ctx.state.auth.user, ctx.input.body)
+);
+
+endpoint("releasePasskey", PasskeyReleaseInput, (ctx) =>
+  LoginFactors.releasePasskey(ctx.state.auth.user, ctx.input.body)
 );
 
 export default router;
