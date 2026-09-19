@@ -153,9 +153,12 @@ export class BoardGitHub {
    *
    * @param token the user access token.
    * @param number the issue number.
-   * @returns the issue as shown on the board.
+   * @returns the issue as shown on the board, and the body its deadline is written in.
    */
-  static async getIssue(token: string, number: number): Promise<BoardIssue> {
+  static async readIssue(
+    token: string,
+    number: number
+  ): Promise<{ issue: BoardIssue; body: string | null }> {
     const { data }: { data: RestIssue } = await this.client(token).request(
       "GET /repos/{owner}/{repo}/issues/{issue_number}",
       { ...repo, issue_number: number, request: timeout() }
@@ -165,28 +168,32 @@ export class BoardGitHub {
     }
 
     const state: IssueState = data.state === "closed" ? "closed" : "open";
-    return buildIssue({
-      number: data.number,
-      title: data.title,
-      url: data.html_url,
-      state,
-      updatedAt: data.updated_at,
-      closedAt: data.closed_at,
-      body: data.body ?? null,
-      labels: data.labels.map((l) =>
-        typeof l === "string" ? l : (l.name ?? "")
-      ),
-      assignees: (data.assignees ?? []).map((a) => ({
-        login: a.login,
-        name: a.name ?? null,
-        avatarUrl: a.avatar_url,
-      })),
-      milestone: data.milestone?.title ?? null,
-    });
+    const body = data.body ?? null;
+    return {
+      issue: buildIssue({
+        number: data.number,
+        title: data.title,
+        url: data.html_url,
+        state,
+        updatedAt: data.updated_at,
+        closedAt: data.closed_at,
+        body,
+        labels: data.labels.map((l) =>
+          typeof l === "string" ? l : (l.name ?? "")
+        ),
+        assignees: (data.assignees ?? []).map((a) => ({
+          login: a.login,
+          name: a.name ?? null,
+          avatarUrl: a.avatar_url,
+        })),
+        milestone: data.milestone?.title ?? null,
+      }),
+      body,
+    };
   }
 
   /**
-   * Updates labels, state or assignees of an issue as the user.
+   * Updates body, labels, state or assignees of an issue as the user.
    *
    * @param token the user access token.
    * @param number the issue number.
@@ -201,6 +208,7 @@ export class BoardGitHub {
       "assignees" in change
         ? { assignees: change.assignees }
         : {
+            body: change.body,
             labels: change.labels,
             state: change.state,
             state_reason: change.stateReason,
@@ -216,7 +224,7 @@ export class BoardGitHub {
   /**
    * Returns the GitHub URL where the user authorizes the App to act on their behalf.
    *
-   * @param state the OAuth state carrying the CSRF nonce.
+   * @param state the OAuth state carrying the CSRF nonce and the page to go back to.
    * @returns the authorization URL.
    */
   static authorizeUrl(state: string) {

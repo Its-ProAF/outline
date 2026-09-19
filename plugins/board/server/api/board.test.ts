@@ -450,6 +450,23 @@ describe("#board.connect", () => {
       `boardGitHubOAuthNonce=${location.searchParams.get("state")}`
     );
   });
+
+  it("carries the page to go back to in the state", async () => {
+    const user = await buildUser();
+
+    const res = await server.get("/api/board.connect?to=calendario", user, {
+      redirect: "manual",
+    });
+
+    expect(res.status).toEqual(302);
+    const state = new URL(res.headers.get("location")!).searchParams.get(
+      "state"
+    )!;
+    expect(state.endsWith("~calendario")).toBe(true);
+    expect(res.headers.get("set-cookie")).toContain(
+      `boardGitHubOAuthNonce=${state.split("~")[0]}`
+    );
+  });
 });
 
 describe("#board.callback", () => {
@@ -497,6 +514,40 @@ describe("#board.callback", () => {
       "github_user_id:42",
       "github_login:IGOLz",
     ]);
+  });
+
+  it("goes back to the page that asked for the link", async () => {
+    const user = await buildUser();
+    msw.use(
+      http.post("https://github.com/login/oauth/access_token", () =>
+        HttpResponse.json({ access_token: "new-token" })
+      ),
+      http.get("https://api.github.com/user", () =>
+        HttpResponse.json({ id: 42, login: "IGOLz" })
+      )
+    );
+
+    const res = await server.get(
+      "/api/board.callback?state=nonce~calendario&code=123",
+      user,
+      { redirect: "manual", headers: { cookie: "boardGitHubOAuthNonce=nonce" } }
+    );
+
+    expect(res.status).toEqual(302);
+    expect(res.headers.get("location")).toContain("/calendario");
+  });
+
+  it("falls back to the board when the state names no page", async () => {
+    const user = await buildUser();
+
+    const res = await server.get(
+      "/api/board.callback?state=nonce~altrove&error=access_denied",
+      user,
+      { redirect: "manual", headers: { cookie: "boardGitHubOAuthNonce=nonce" } }
+    );
+
+    expect(res.status).toEqual(302);
+    expect(res.headers.get("location")).toContain("/board?error=access_denied");
   });
 
   it("drops the link when the token cannot be refreshed", async () => {

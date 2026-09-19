@@ -1,6 +1,12 @@
 import { PadlockIcon } from "outline-icons";
 import { observer } from "mobx-react";
-import { SearchIcon, HomeIcon, SidebarIcon, TodoListIcon } from "outline-icons";
+import {
+  SearchIcon,
+  HomeIcon,
+  SidebarIcon,
+  TodoListIcon,
+  CalendarIcon,
+} from "outline-icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   DragActiveProvider,
@@ -139,7 +145,18 @@ function AppSidebar() {
               onClickIntent={Scenes.Search.preload}
             />
             {env.GITHUB_CLIENT_ID && (
-              <SidebarLink to="/board" icon={<TodoListIcon />} label="Board" />
+              <>
+                <SidebarLink
+                  to="/board"
+                  icon={<TodoListIcon />}
+                  label="Board"
+                />
+                <SidebarLink
+                  to="/calendario"
+                  icon={<CalendarIcon />}
+                  label="Calendario"
+                />
+              </>
             )}
             {!user.isGuest && (
               <SidebarLink

@@ -26,6 +26,7 @@ export type IssueChange = {
   labels?: string[];
   state?: IssueState;
   stateReason?: "completed" | "reopened";
+  body?: string;
 };
 
 /**
