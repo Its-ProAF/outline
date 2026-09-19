@@ -1,0 +1,6 @@
+{
+  "id": "calendar",
+  "name": "Calendario",
+  "priority": 31,
+  "description": "Calendar of the deadlines of the GitHub issues of Its-ProAF/ProAF, rescheduled on behalf of each person."
+}

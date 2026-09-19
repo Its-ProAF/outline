@@ -14,11 +14,13 @@ type Props = {
   board: BoardData;
   filter: BoardFilter;
   onChange: (filter: BoardFilter) => void;
+  /** Facets the page decides on its own, like the year on the calendar. */
+  omit?: FacetKey[];
 };
 
 type Group = { key: FacetKey; legend: string; options: [string, string][] };
 
-export default function Facets({ board, filter, onChange }: Props) {
+export default function Facets({ board, filter, onChange, omit }: Props) {
   const me = board.viewer.login;
   const personName = (login: string) =>
     firstName(
@@ -90,28 +92,30 @@ export default function Facets({ board, filter, onChange }: Props) {
 
   return (
     <Aside aria-label="Filtri">
-      {groups.map((group) => (
-        <Fieldset key={group.key}>
-          <Legend>{group.legend}</Legend>
-          {group.options.map(([value, label]) => {
-            const selected = filter[group.key] === value;
-            return (
-              <Option key={value} $selected={selected}>
-                <input
-                  type="radio"
-                  name={`board-${group.key}`}
-                  checked={selected}
-                  onChange={() => onChange({ ...filter, [group.key]: value })}
-                />
-                {label}
-                <Count>
-                  {countFor(board.issues, filter, group.key, value)}
-                </Count>
-              </Option>
-            );
-          })}
-        </Fieldset>
-      ))}
+      {groups
+        .filter((group) => !omit?.includes(group.key))
+        .map((group) => (
+          <Fieldset key={group.key}>
+            <Legend>{group.legend}</Legend>
+            {group.options.map(([value, label]) => {
+              const selected = filter[group.key] === value;
+              return (
+                <Option key={value} $selected={selected}>
+                  <input
+                    type="radio"
+                    name={`board-${group.key}`}
+                    checked={selected}
+                    onChange={() => onChange({ ...filter, [group.key]: value })}
+                  />
+                  {label}
+                  <Count>
+                    {countFor(board.issues, filter, group.key, value)}
+                  </Count>
+                </Option>
+              );
+            })}
+          </Fieldset>
+        ))}
     </Aside>
   );
 }
